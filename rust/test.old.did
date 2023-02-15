@@ -1,0 +1,48 @@
+type ArgValue = variant {
+  I64 : int64;
+  U64 : nat64;
+  Vec : vec ArgValue;
+  Slice : vec nat8;
+  Text : text;
+  True;
+  False;
+  Float : float64;
+  Principal : principal;
+};
+type EventNodeRequest = record {
+  name : text;
+  args : vec record { text; ArgValue };
+};
+type EventRequest = record {
+  name : text;
+  nodes : vec EventNodeRequest;
+};
+type EventNode = record {
+  name : text;
+  cid : text;
+  func_name : text;
+  compensate_func_name : text;
+  pre_node : text;
+  next_node : text;
+};
+type EventLang = record {
+  name : text;
+  comment : text;
+  owner : principal;
+  time : nat64;
+  nodes : vec EventNode;
+};
+type EventLangRequest = record {
+  name : text;
+  comment : text;
+  nodes : vec EventNode;
+};
+
+service : {
+  get : (text) -> (opt EventLang) query;
+  find : () -> (vec EventLang) query;
+  insert : (EventLangRequest) -> (bool);
+  delete : (text) -> (bool);
+  execute : (EventRequest) -> (bool);
+  test : (text, text, vec record { text; ArgValue }) -> (bool);
+}
