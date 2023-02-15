@@ -9,6 +9,7 @@
 
 # dfx temporary files
 .dfx/
+.vessel/
 # state icx-proxy-pid webserver-port replica-configuration
 
 # frontend code
@@ -17,5 +18,3 @@ dist/
 
 target/
 *.db
-
-.vessel/
