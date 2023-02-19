@@ -1,26 +1,31 @@
 {
-    "canisters": {
-      "test": {
-        "type": "rust",
-        "package": "test_demo",
-        "candid": "rust/test.did"
-      },
-      "demo": {
-        "main": "motoko/src/demo.mo",
-        "type": "motoko"
-      }
+  "canisters": {
+    "test": {
+      "type": "rust",
+      "package": "test_demo",
+      "candid": "rust/test.did"
     },
-    "defaults": {
-      "build": {
-        "packtool": "vessel sources"
-      }
+    "demo": {
+      "main": "motoko/src/demo.mo",
+      "type": "motoko"
     },
-    "dfx": "0.11.1",
-    "networks": {
-      "local": {
-        "bind": "127.0.0.1:8000",
-        "type": "ephemeral"
-      }
-    },
-    "version": 1
+    "saga": {
+      "wasm": "./rust/test.wasm",
+      "type": "custom",
+      "candid": "./rust/test.did"
+    }
+  },
+  "defaults": {
+    "build": {
+      "packtool": "vessel sources"
+    }
+  },
+  "dfx": "0.11.1",
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:8000",
+      "type": "ephemeral"
+    }
+  },
+  "version": 1
 }
