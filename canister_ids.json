@@ -1,4 +1,10 @@
 {
+  "demo1": {
+    "ic": "m6oic-4aaaa-aaaak-aefna-cai"
+  },
+  "demo2": {
+    "ic": "mzpow-ryaaa-aaaak-aefnq-cai"
+  },
   "saga": {
     "ic": "fug7i-ciaaa-aaaak-aee4q-cai"
   },
