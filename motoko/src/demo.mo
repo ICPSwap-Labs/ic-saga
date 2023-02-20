@@ -64,6 +64,10 @@ actor {
         true
     };
 
+    public query func find() : async [(Text, [(Text, ArgValue)])] {
+        Iter.toArray(data.entries())
+    };
+
     public query func cycleBalance() : async Nat {
         return Cycles.balance();
     };
