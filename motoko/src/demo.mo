@@ -3,7 +3,10 @@ import Array "mo:base/Array";
 import List "mo:base/List";
 import Buffer "mo:base/Buffer";
 import Nat "mo:base/Nat";
+import Nat8 "mo:base/Nat8";
+import Nat64 "mo:base/Nat64";
 import Int "mo:base/Int";
+import Int64 "mo:base/Int64";
 import Time "mo:base/Time";
 import Text "mo:base/Text";
 import Hash "mo:base/Hash";
@@ -29,8 +32,35 @@ actor {
         #Principal : Principal;
     };
 
+    private var data: HashMap.HashMap<Text, [(Text, ArgValue)]> = HashMap.HashMap<Text, [(Text, ArgValue)]>(0, Text.equal, Text.hash);
 
-    public query func test(args: [(Text, ArgValue)]) : async Bool {
+    public shared func test(args: [(Text, ArgValue)]) : async Bool {
+        let temp = HashMap.fromIter<Text, ArgValue>(args.vals(), 0, Text.equal, Text.hash);
+        let id = switch(temp.get("id")) {
+            case (?value) { 
+                switch(value) {
+                    case (#Text(id)) { id };
+                    case (_) { "0" };
+                }
+            };
+            case (null) { "0" };
+        };
+        data.put(id, args);
+        true
+    };
+
+    public shared func test_compensate(args: [(Text, ArgValue)]) : async Bool {
+        let temp = HashMap.fromIter<Text, ArgValue>(args.vals(), 0, Text.equal, Text.hash);
+        let id = switch(temp.get("id")) {
+            case (?value) { 
+                switch(value) {
+                    case (#Text(id)) { id };
+                    case (_) { "0" };
+                }
+            };
+            case (null) { "0" };
+        };
+        data.delete(id);
         true
     };
 
