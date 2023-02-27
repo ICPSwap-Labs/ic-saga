@@ -71,14 +71,44 @@ pub struct EventRequest {
     pub nodes: Vec<EventNodeRequest>,
 }
 
-#[derive(CandidType, Serialize, Deserialize)]
+#[derive(CandidType, Serialize, Deserialize, Debug)]
 pub struct UserData {
     pub event_langs: Map<String, EventLang>,
 }
 
-#[derive(CandidType, Serialize, Deserialize)]
+#[derive(CandidType, Serialize, Deserialize, Debug)]
 pub struct Data {
     pub user_events: Map<Principal, UserData>,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+pub struct NodeLog {
+    pub name: String,
+    pub execute_status: bool,
+    pub compensate_execute_status: bool,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+pub struct Log {
+    pub time: u64,
+    pub logs: Vec<NodeLog>,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+pub struct Logs {
+    pub name: String,
+    pub logs: Vec<Log>,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub struct EventLogs {
+    pub user_name: String,
+    pub event_logs: Map<String, Logs>,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Debug)]
+pub struct UserEventLogs {
+    pub user_logs: Map<Principal, EventLogs>,
 }
 
 impl AsHashTree for EventNodeIns {
@@ -129,6 +159,38 @@ impl AsHashTree for UserData {
     }
 }
 
+impl AsHashTree for Logs {
+    fn root_hash(&self) -> Hash {
+        fork_hash(
+            &self.name.root_hash(), 
+            &self.name.root_hash(),
+        )
+    }
+
+    fn as_hash_tree(&self) -> HashTree<'_> {
+        fork(
+            self.name.as_hash_tree(),
+            self.name.as_hash_tree(),
+        )
+    }
+}
+
+impl AsHashTree for EventLogs {
+    fn root_hash(&self) -> Hash {
+        fork_hash(
+            &self.user_name.root_hash(), 
+            &self.user_name.root_hash(),
+        )
+    }
+
+    fn as_hash_tree(&self) -> HashTree<'_> {
+        fork(
+            self.user_name.as_hash_tree(),
+            self.user_name.as_hash_tree(),
+        )
+    }
+}
+
 impl EventRequest {
     #[inline]
     pub fn to_event_node_ins_map(self, lang_nodes: Vec<EventNode>) -> Map<String, EventNodeIns> {
@@ -174,6 +236,14 @@ impl Default for Data {
     fn default() -> Self {
         Data {
             user_events: Map::new(),
+        }
+    }
+}
+
+impl Default for UserEventLogs {
+    fn default() -> Self {
+        UserEventLogs {
+            user_logs: Map::new(),
         }
     }
 }
@@ -262,16 +332,46 @@ fn delete(name: String) -> bool
     true
 }
 
+#[query]
+#[candid_method(query)]
+fn find_log(name: String) -> Vec<Log>
+{
+    let caller = ic::caller();
+    let user_event_logs = ic::get_mut::<UserEventLogs>();
+
+    let ret = match user_event_logs.user_logs.get(&caller) {
+        Some(event_logs) => {
+            match event_logs.event_logs.get(&name) {
+                Some(logs) => { logs.logs.clone() }
+                None => { Vec::new() }
+            }
+        },
+        None => {
+            Vec::new()
+        },
+    };
+
+    ret
+}
+
 #[update]
 #[candid_method(update)]
-pub async fn execute(request: EventRequest) -> bool
+pub async fn execute(request: EventRequest) -> Log
 {
-    let event_lang = match get(request.name.clone()) {
+    let caller = ic::caller();
+    let event_name = request.name.clone();
+
+    let event_lang = match get(event_name.clone()) {
         Some(lang) => lang.clone(),
         None => ic::trap("Event lang is not found."),
     };
 
     let node_map = request.to_event_node_ins_map(event_lang.nodes);
+
+    let log = &mut Log {
+        time: ic::time() / 1_000_000,
+        logs: Vec::new(),
+    };
 
     let mut node_name = "root";
 
@@ -282,20 +382,21 @@ pub async fn execute(request: EventRequest) -> bool
                     Ok(res) => {
                         if res {
                             node_name = &node.next_node;
+                            log.logs.push(buildNodeLog(node.name.clone(), true, false));
                             true
                         } else {
-                            execute_compensate(node_name, &node_map).await;
+                            execute_compensate(node_name, &node_map, log).await;
                             false
                         }
                     },
                     Err(_) => {
-                        execute_compensate(node_name, &node_map).await;
+                        execute_compensate(node_name, &node_map, log).await;
                         false
                     },
                 }
             },
             None => {
-                execute_compensate(node_name, &node_map).await;
+                execute_compensate(node_name, &node_map, log).await;
                 false
             },
         };
@@ -304,18 +405,54 @@ pub async fn execute(request: EventRequest) -> bool
         };
     };
 
-    node_name == "end"
+    // node_name == "end"
+    let user_event_logs = ic::get_mut::<UserEventLogs>();
+    user_event_logs.user_logs.get_mut(&caller);
+    match user_event_logs.user_logs.get_mut(&caller) {
+        Some(event_logs) => {
+            match event_logs.event_logs.get_mut(&event_name) {
+                Some(logs) => { logs.logs.push(log.clone()) },
+                None => { 
+                    let mut logs = Logs {
+                        name: event_name.clone(),
+                        logs: Vec::<Log>::new(),
+                    };
+                    logs.logs.push(log.clone());
+                },
+            };
+        },
+        None => {
+            let mut event_logs = EventLogs { 
+                user_name: caller.to_text(),
+                event_logs: Map::<String, Logs>::new(), 
+            };
+            match event_logs.event_logs.get_mut(&event_name) {
+                Some(logs) => { logs.logs.push(log.clone()) },
+                None => { 
+                    let mut logs = Logs {
+                        name: event_name.clone(),
+                        logs: Vec::<Log>::new(),
+                    };
+                    logs.logs.push(log.clone());
+                },
+            };
+            user_event_logs.user_logs.insert(caller, event_logs);
+        },
+    };
+    
+    log.clone()
 }
 
-async fn execute_compensate(node_name: &str, node_map: &Map<String, EventNodeIns>) -> ()
+async fn execute_compensate(node_name: &str, node_map: &Map<String, EventNodeIns>, log: &mut Log) -> ()
 {
     let mut compensate_node_name = node_name;
     while compensate_node_name != "none" {
         match node_map.get(compensate_node_name) {
             Some(node) => {
                 match exec_call(node.cid.clone(), node.compensate_func_name.clone(), node.args.clone()).await {
-                    Ok(_) => {
+                    Ok(status) => {
                         compensate_node_name = &node.pre_node;
+                        log.logs.push(buildNodeLog(node.name.clone(), false, status));
                     },
                     Err(_) => {},
                 };
@@ -351,3 +488,10 @@ async fn exec_call(cid: String, func_name: String, args: Vec<(String, ArgValue)>
     Ok(response.0)
 }
 
+fn buildNodeLog(name: String, execute_status: bool, compensate_execute_status: bool) -> NodeLog {
+    NodeLog { 
+        name: name, 
+        execute_status: execute_status, 
+        compensate_execute_status: compensate_execute_status,
+    }
+}

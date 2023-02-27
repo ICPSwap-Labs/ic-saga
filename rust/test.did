@@ -37,6 +37,25 @@ type EventLangRequest = record {
   comment : text;
   nodes : vec EventNode;
 };
+type NodeLog = record {
+  name : text;
+  execute_status : bool;
+  compensate_execute_status : bool;
+};
+type Log = record {
+  logs : vec NodeLog;
+};
+type Logs = record {
+  name : text;
+  logs : vec Log;
+};
+type EventLogs = record {
+  name : text;
+  event_logs : vec Logs;
+};
+type UserEventLogs = record {
+  user_logs : vec record { principal; EventLogs };
+};
 
 service : {
   get : (text) -> (opt EventLang) query;
@@ -45,4 +64,5 @@ service : {
   delete : (text) -> (bool);
   execute : (EventRequest) -> (bool);
   test : (text, text, vec record { text; ArgValue }) -> (bool);
+  find_log : (text) -> (vec Log) query;
 }
