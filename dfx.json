@@ -3,7 +3,7 @@
     "saga": {
       "type": "rust",
       "package": "test_demo",
-      "candid": "rust/test.did"
+      "candid": "rust/saga.did"
     },
     "demo1": {
       "main": "motoko/src/demo.mo",

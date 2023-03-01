@@ -1,3 +1,5 @@
+use std::time;
+
 use certified_vars::hashtree::{fork, fork_hash};
 use certified_vars::{Map, AsHashTree, Hash, HashTree};
 use ic_kit::macros::*;
@@ -193,7 +195,7 @@ impl AsHashTree for EventLogs {
 
 impl EventRequest {
     #[inline]
-    pub fn to_event_node_ins_map(self, lang_nodes: Vec<EventNode>) -> Map<String, EventNodeIns> {
+    pub fn to_event_node_ins_map(self, lang_nodes: &Vec<EventNode>) -> Map<String, EventNodeIns> {
         let mut map = Map::<String, EventNodeIns>::new();
         for lang_node in lang_nodes {
             let mut args = Vec::new();
@@ -205,12 +207,12 @@ impl EventRequest {
             };
             let node_name = lang_node.name.clone();
             let node_ins = EventNodeIns {
-                name: lang_node.name,
-                cid: lang_node.cid,
-                func_name: lang_node.func_name,
-                compensate_func_name: lang_node.compensate_func_name,
-                pre_node: lang_node.pre_node,
-                next_node: lang_node.next_node,
+                name: lang_node.name.to_string(),
+                cid: lang_node.cid.to_string(),
+                func_name: lang_node.func_name.to_string(),
+                compensate_func_name: lang_node.compensate_func_name.to_string(),
+                pre_node: lang_node.pre_node.to_string(),
+                next_node: lang_node.next_node.to_string(),
                 args: args,
             };
             map.insert(node_name, node_ins);
@@ -366,23 +368,31 @@ pub async fn execute(request: EventRequest) -> Log
         None => ic::trap("Event lang is not found."),
     };
 
-    let node_map = request.to_event_node_ins_map(event_lang.nodes);
+    let node_map = request.to_event_node_ins_map(&event_lang.nodes);
 
     let log = &mut Log {
         time: ic::time() / 1_000_000,
         logs: Vec::new(),
     };
 
-    let mut node_name = "root";
+    let mut node_name = "";
+    for node in &event_lang.nodes {
+        if node.pre_node == "root" {
+            node_name = &node.name;
+        };
+    };
+    if node_name == "" {
+        ic::trap("Can not find root node.");
+    };
 
     while node_name != "end" {
         let status = match node_map.get(node_name) {
             Some(node) => {
-                match exec_call(node.cid.clone(), node.func_name.clone(), node.args.clone()).await {
+                match exec_call(&node.cid, &node.func_name, &node.args).await {
                     Ok(res) => {
                         if res {
                             node_name = &node.next_node;
-                            log.logs.push(buildNodeLog(node.name.clone(), true, false));
+                            log.logs.push(build_node_log(node.name.clone(), true, false));
                             true
                         } else {
                             execute_compensate(node_name, &node_map, log).await;
@@ -396,7 +406,7 @@ pub async fn execute(request: EventRequest) -> Log
                 }
             },
             None => {
-                execute_compensate(node_name, &node_map, log).await;
+                //execute_compensate(node_name, &node_map, log).await;
                 false
             },
         };
@@ -449,10 +459,10 @@ async fn execute_compensate(node_name: &str, node_map: &Map<String, EventNodeIns
     while compensate_node_name != "none" {
         match node_map.get(compensate_node_name) {
             Some(node) => {
-                match exec_call(node.cid.clone(), node.compensate_func_name.clone(), node.args.clone()).await {
+                match exec_call(&node.cid, &node.compensate_func_name, &node.args).await {
                     Ok(status) => {
                         compensate_node_name = &node.pre_node;
-                        log.logs.push(buildNodeLog(node.name.clone(), false, status));
+                        log.logs.push(build_node_log(node.name.clone(), false, status));
                     },
                     Err(_) => {},
                 };
@@ -466,7 +476,7 @@ async fn execute_compensate(node_name: &str, node_map: &Map<String, EventNodeIns
 #[candid_method(update)]
 pub async fn test(cid: String, func_name: String, args: Vec<(String, ArgValue)>) -> bool
 {
-    let response: Result<bool, (RejectionCode, String)> = exec_call(cid, func_name, args).await;
+    let response: Result<bool, (RejectionCode, String)> = exec_call(&cid, &func_name, &args).await;
 
     let result = match response {
         Ok(_) => { true },
@@ -476,10 +486,10 @@ pub async fn test(cid: String, func_name: String, args: Vec<(String, ArgValue)>)
     result
 }
 
-async fn exec_call(cid: String, func_name: String, args: Vec<(String, ArgValue)>) -> Result<bool, (RejectionCode, String)>
+async fn exec_call(cid: &str, func_name: &str, args: &Vec<(String, ArgValue)>) -> Result<bool, (RejectionCode, String)>
 {
     let response: (bool,) = ic::call(
-        Principal::from_text(&cid).unwrap(), 
+        Principal::from_text(cid).unwrap(), 
         func_name, 
         (args,)
     )
@@ -488,7 +498,7 @@ async fn exec_call(cid: String, func_name: String, args: Vec<(String, ArgValue)>
     Ok(response.0)
 }
 
-fn buildNodeLog(name: String, execute_status: bool, compensate_execute_status: bool) -> NodeLog {
+fn build_node_log(name: String, execute_status: bool, compensate_execute_status: bool) -> NodeLog {
     NodeLog { 
         name: name, 
         execute_status: execute_status, 
