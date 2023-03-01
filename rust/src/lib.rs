@@ -81,6 +81,7 @@ pub struct UserData {
 #[derive(CandidType, Serialize, Deserialize, Debug)]
 pub struct Data {
     pub user_events: Map<Principal, UserData>,
+    pub user_logs: Map<Principal, EventLogs>,
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
@@ -106,11 +107,6 @@ pub struct Logs {
 pub struct EventLogs {
     pub user_name: String,
     pub event_logs: Map<String, Logs>,
-}
-
-#[derive(CandidType, Serialize, Deserialize, Debug)]
-pub struct UserEventLogs {
-    pub user_logs: Map<Principal, EventLogs>,
 }
 
 impl AsHashTree for EventNodeIns {
@@ -238,13 +234,6 @@ impl Default for Data {
     fn default() -> Self {
         Data {
             user_events: Map::new(),
-        }
-    }
-}
-
-impl Default for UserEventLogs {
-    fn default() -> Self {
-        UserEventLogs {
             user_logs: Map::new(),
         }
     }
@@ -339,9 +328,9 @@ fn delete(name: String) -> bool
 fn find_log(name: String) -> Vec<Log>
 {
     let caller = ic::caller();
-    let user_event_logs = ic::get_mut::<UserEventLogs>();
+    let data = ic::get_mut::<Data>();
 
-    let ret = match user_event_logs.user_logs.get(&caller) {
+    let ret = match data.user_logs.get(&caller) {
         Some(event_logs) => {
             match event_logs.event_logs.get(&name) {
                 Some(logs) => { logs.logs.clone() }
@@ -416,18 +405,20 @@ pub async fn execute(request: EventRequest) -> Log
     };
 
     // node_name == "end"
-    let user_event_logs = ic::get_mut::<UserEventLogs>();
-    user_event_logs.user_logs.get_mut(&caller);
-    match user_event_logs.user_logs.get_mut(&caller) {
+    let data = ic::get_mut::<Data>();
+    match data.user_logs.get_mut(&caller) {
         Some(event_logs) => {
             match event_logs.event_logs.get_mut(&event_name) {
-                Some(logs) => { logs.logs.push(log.clone()) },
+                Some(logs) => {
+                    logs.logs.push(log.clone());
+                },
                 None => { 
                     let mut logs = Logs {
                         name: event_name.clone(),
                         logs: Vec::<Log>::new(),
                     };
                     logs.logs.push(log.clone());
+                    event_logs.event_logs.insert(event_name, logs);
                 },
             };
         },
@@ -446,7 +437,7 @@ pub async fn execute(request: EventRequest) -> Log
                     logs.logs.push(log.clone());
                 },
             };
-            user_event_logs.user_logs.insert(caller, event_logs);
+            data.user_logs.insert(caller, event_logs);
         },
     };
     

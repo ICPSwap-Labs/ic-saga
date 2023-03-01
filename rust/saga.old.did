@@ -43,6 +43,7 @@ type NodeLog = record {
   compensate_execute_status : bool;
 };
 type Log = record {
+  time : nat64;
   logs : vec NodeLog;
 };
 type Logs = record {
@@ -50,11 +51,8 @@ type Logs = record {
   logs : vec Log;
 };
 type EventLogs = record {
-  name : text;
-  event_logs : vec Logs;
-};
-type UserEventLogs = record {
-  user_logs : vec record { principal; EventLogs };
+  user_name : text;
+  event_logs : vec record { text; Logs };
 };
 
 service : {
@@ -62,7 +60,7 @@ service : {
   find : () -> (vec EventLang) query;
   insert : (EventLangRequest) -> (bool);
   delete : (text) -> (bool);
-  execute : (EventRequest) -> (bool);
+  execute : (EventRequest) -> (Log);
   test : (text, text, vec record { text; ArgValue }) -> (bool);
   find_log : (text) -> (vec Log) query;
 }

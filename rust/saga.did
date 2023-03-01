@@ -54,9 +54,6 @@ type EventLogs = record {
   user_name : text;
   event_logs : vec record { text; Logs };
 };
-type UserEventLogs = record {
-  user_logs : vec record { principal; EventLogs };
-};
 
 service : {
   get : (text) -> (opt EventLang) query;
