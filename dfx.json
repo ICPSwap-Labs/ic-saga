@@ -1,18 +1,9 @@
 {
   "canisters": {
-    "test": {
+    "saga": {
       "type": "rust",
       "package": "test_demo",
       "candid": "rust/test.did"
-    },
-    "demo": {
-      "main": "motoko/src/demo.mo",
-      "type": "motoko"
-    },
-    "saga": {
-      "wasm": "./rust/test.wasm",
-      "type": "custom",
-      "candid": "./rust/test.did"
     },
     "demo1": {
       "main": "motoko/src/demo.mo",
