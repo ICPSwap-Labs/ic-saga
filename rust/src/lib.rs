@@ -447,7 +447,7 @@ pub async fn execute(request: EventRequest) -> Log
 async fn execute_compensate(node_name: &str, node_map: &Map<String, EventNodeIns>, log: &mut Log) -> ()
 {
     let mut compensate_node_name = node_name;
-    while compensate_node_name != "none" {
+    while compensate_node_name != "root" {
         match node_map.get(compensate_node_name) {
             Some(node) => {
                 match exec_call(&node.cid, &node.compensate_func_name, &node.args).await {
