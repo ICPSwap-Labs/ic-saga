@@ -45,7 +45,7 @@ actor {
             };
             case (null) { "0" };
         };
-        if (id != "1") {
+        if (id == "1") {
             data.put(id, args);
             true
         } else {
