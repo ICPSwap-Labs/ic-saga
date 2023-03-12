@@ -6,11 +6,11 @@
       "candid": "rust/saga.did"
     },
     "demo1": {
-      "main": "motoko/src/demo.mo",
+      "main": "motoko/src/demo1.mo",
       "type": "motoko"
     },
     "demo2": {
-      "main": "motoko/src/demo.mo",
+      "main": "motoko/src/demo2.mo",
       "type": "motoko"
     }
   },

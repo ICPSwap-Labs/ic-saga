@@ -34,7 +34,7 @@ actor {
 
     private var data: HashMap.HashMap<Text, [(Text, ArgValue)]> = HashMap.HashMap<Text, [(Text, ArgValue)]>(0, Text.equal, Text.hash);
 
-    public shared func test(args: [(Text, ArgValue)]) : async Bool {
+    public shared func add(args: [(Text, ArgValue)]) : async Bool {
         let temp = HashMap.fromIter<Text, ArgValue>(args.vals(), 0, Text.equal, Text.hash);
         let id = switch(temp.get("id")) {
             case (?value) { 
@@ -45,11 +45,15 @@ actor {
             };
             case (null) { "0" };
         };
-        data.put(id, args);
-        true
+        if (id != "1") {
+            data.put(id, args);
+            true
+        } else {
+            false
+        }
     };
 
-    public shared func test_compensate(args: [(Text, ArgValue)]) : async Bool {
+    public shared func remove(args: [(Text, ArgValue)]) : async Bool {
         let temp = HashMap.fromIter<Text, ArgValue>(args.vals(), 0, Text.equal, Text.hash);
         let id = switch(temp.get("id")) {
             case (?value) { 
