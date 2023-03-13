@@ -4,6 +4,8 @@ Saga State Machine is designed to solve distributed transaction problems.
 
 Each Saga work flow describes a long lived transaction with a group of sequential sub-transactions, and each sub-transaction has a compensation method to cancel the result of current sub-transaction. So if there is no exception, the sub-transactions will be done in order. And if any fails, the compensation methods will be invoked one by one in a reverse order.
 
+![diagram](./image/workflow.jpg)
+
 Here is a demo of how to define a Saga work flow
 ```
 https://f2esa-zyaaa-aaaak-aee5q-cai.ic0.app
@@ -23,8 +25,6 @@ One node is one sub-transaction. One work flow has a group of nodes, and they ar
 - Node-CanisterID: The canister id which will be used in currentnode.
 - Node-FunctionName: The function name which will be invoked incurrent node.
 - Node-CompensateFunctionName: The compensation function of this node which will be invoked if the work flow failed.
-
-![diagram](./image/workflow.jpg)
 
 ## Standard
 
