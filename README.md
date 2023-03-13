@@ -6,7 +6,7 @@ Each Saga work flow describes a long lived transaction with a group of sequentia
 
 ![diagram](./image/workflow.jpg)
 
-Here is a demo of how to define a Saga work flow
+A demo of how to define a Saga work flow
 ```
 https://f2esa-zyaaa-aaaak-aee5q-cai.ic0.app
 ```
